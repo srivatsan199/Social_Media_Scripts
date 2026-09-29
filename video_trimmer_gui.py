@@ -224,17 +224,20 @@ def parse_bulk_trim_text(text):
 
         Name:
         start_1-end_1
-        start_2-end_2
+        start_2-end_2-watermark_2
         Name 2:
         start_1-end_1
 
     A line ending in ':' starts a new named group (the trailing colon is
-    stripped to get the name). Any other non-blank line is treated as a
-    "start-end" pair for the current group, split on the first '-'
-    (start/end times can freely contain ':', e.g. "1:55:17-1:55:23").
+    stripped to get the name). Any other non-blank line is a '-'-separated
+    "start-end" or "start-end-watermark" entry for the current group
+    (start/end times can freely contain ':', e.g. "1:55:17-1:55:23", since
+    the split is on '-' rather than ':'). The optional third field sets that
+    row's Watermark value (e.g. "4", "6", "W", or any other text — it isn't
+    limited to WATERMARK_CHOICES); omitting it defaults to "None".
 
     Returns (rows, errors) where rows is a list of
-    (output_filename, start, end) tuples with filenames like
+    (output_filename, start, end, watermark) tuples with filenames like
     "Name_1.mp4", "Name_2.mp4", etc., and errors is a list of human
     readable messages for any lines that couldn't be parsed.
     """
@@ -261,20 +264,24 @@ def parse_bulk_trim_text(text):
             errors.append(f"Line {lineno}: found a time pair before any 'Name:' line.")
             continue
 
-        if "-" not in line:
-            errors.append(f"Line {lineno}: expected 'start-end' but found '{line}'.")
+        parts = [p.strip() for p in line.split("-")]
+        if len(parts) == 2:
+            start, end = parts
+            watermark = "None"
+        elif len(parts) == 3:
+            start, end, watermark = parts
+        else:
+            errors.append(f"Line {lineno}: expected 'start-end' or 'start-end-watermark' but found '{line}'.")
             continue
 
-        start, end = line.split("-", 1)
-        start = start.strip()
-        end = end.strip()
         if not start or not end:
-            errors.append(f"Line {lineno}: expected 'start-end' but found '{line}'.")
+            errors.append(f"Line {lineno}: expected 'start-end' or 'start-end-watermark' but found '{line}'.")
             continue
+        watermark = watermark or "None"
 
         counters[current_name] += 1
         filename = f"{current_name}_{counters[current_name]}.mp4"
-        rows.append((filename, start, end))
+        rows.append((filename, start, end, watermark))
 
     return rows, errors
 
@@ -302,7 +309,7 @@ class TrimRow:
         self.filename_var = tk.StringVar(value=filename)
         self.start_var = tk.StringVar(value=start)
         self.end_var = tk.StringVar(value=end)
-        self.watermark_var = tk.StringVar(value=watermark if watermark in WATERMARK_CHOICES else "None")
+        self.watermark_var = tk.StringVar(value=watermark or "None")
 
         ttk.Entry(self.frame, textvariable=self.filename_var, width=24).grid(row=1, column=0, sticky="we")
         ttk.Entry(self.frame, textvariable=self.start_var, width=12).grid(row=1, column=1, sticky="we", padx=(10, 0))
@@ -311,7 +318,6 @@ class TrimRow:
             self.frame,
             textvariable=self.watermark_var,
             values=WATERMARK_CHOICES,
-            state="readonly",
             width=6,
         ).grid(row=1, column=3, sticky="we", padx=(10, 0))
 
@@ -899,8 +905,8 @@ class VideoTrimmerApp:
         text = self.bulk_text.get("1.0", "end")
         rows, errors = parse_bulk_trim_text(text)
 
-        for filename, start, end in rows:
-            self.add_trim_row(filename=filename, start=start, end=end)
+        for filename, start, end, watermark in rows:
+            self.add_trim_row(filename=filename, start=start, end=end, watermark=watermark)
 
         summary = f"Added {len(rows)} trim row(s) from the bulk text."
         if errors:

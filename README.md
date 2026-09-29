@@ -95,12 +95,13 @@ If double-clicking the `.py` file doesn't open the GUI, always run it from a ter
    ```
    Intro:
    00:00:00-00:01:30
-   00:02:00-00:02:45
+   00:02:00-00:02:45-4
    Outro:
-   01:10:00-01:12:00
+   01:10:00-01:12:00-W
    ```
    - A line ending in `:` starts a new named group (e.g. `Intro:`).
-   - Every other line is a `start-end` pair for the current group, split on the first `-`. Times can freely use `HH:MM:SS`, `MM:SS`, `H:MM:SS`, or plain seconds — e.g. `1:55:17-1:55:23`.
+   - Every other line is `start-end` or `start-end-watermark` for the current group, split on `-`. Times can freely use `HH:MM:SS`, `MM:SS`, `H:MM:SS`, or plain seconds — e.g. `1:55:17-1:55:23`.
+   - The optional third field sets that row's **Watermark** value — typically `4`, `6`, or `W`, but it isn't limited to those; any text works (e.g. `century`), since the Watermark field itself accepts free text, not just the dropdown presets. Leaving it off defaults to `None`.
    - Rows are auto-named `Name_1.mp4`, `Name_2.mp4`, etc., per group — so the example above produces `Intro_1.mp4`, `Intro_2.mp4`, and `Outro_1.mp4`.
    - Click **Load from .txt file...** to pull the text in from a file, or just type/paste it directly into the box.
    - Click **Add rows from text above** to turn it into trim rows — these are added to whatever rows already exist (nothing is deleted), and each new row still shows up individually below so you can review or edit it before exporting.
