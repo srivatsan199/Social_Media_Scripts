@@ -153,7 +153,112 @@ video at all (only the output folder is used).
 
 ---
 
-## 7. Troubleshooting
+## 7. Match automation
+
+The **Match automation** box builds one reel per player for a CricClubs match
+that has the CricClubs Live scoreboard on the video. Each reel is the player's
+clips followed by their stat card(s). Clips are 4s and 6s when batting, and
+wickets credited to them when bowling. Run outs and retirements aren't included.
+
+1. Set the **Output folder**. To trim a video you already have, pick it as **Input
+   video**. Tick **Use logo** if you want it on the stat cards.
+2. Paste the match's link into **Scorecard link**, check **Our team**, and click
+   **Open scorecard**. The Ball by Ball page opens in your browser.
+3. On that page, press Ctrl+A then Ctrl+C. Switch to the other innings and do the
+   same. The app picks both up from the clipboard and puts them in the right boxes.
+   If it can't tell the teams apart, it warns you, and **Swap innings** switches
+   the two boxes.
+
+   The video is then chosen in this order. A local **Input video** is always used.
+   Otherwise it downloads the **Video URL**. If that's blank too, it searches YouTube
+   for a title with both team names and the exact match date, and downloads the
+   longest match. If nothing matches, it asks you for the link.
+
+   The website blocks scripts, so the app can't read the link itself. You can
+   also paste into the boxes by hand, and pasting only one innings works too.
+4. When the download finishes, click **1. Find highlights**. Your pasted runs are checked against the page's
+   over-by-over score, and any mismatch is shown in a popup.
+5. Review the rows added under **Trims**. Remove any you don't want, or adjust
+   their Start and End times. Keep the filename format `Player Name_1.mp4`,
+   because it decides whose reel a clip joins.
+6. Click **2. Generate videos**. This makes every video in one go:
+   - the clips and the stat cards
+   - a `Player Name_reel.mp4` for each player with at least one clip: their
+     clips, then their stat card(s)
+   - `Batting_highlights.mp4` (rows without a `W`) and `Bowling_highlights.mp4`
+     (rows with a `W`), in the order things happened, with no stat cards
+   - `Match_highlights.mp4` as well, with everything in order, if **Also make
+     combined match highlights** is ticked
+
+**Wrong-match warning:** YTDown.com and yt-dlp file names carry the stream title,
+such as `…Cheetahs-Alpha-vs-Cougars-Black-11-01-2026…`. If the teams or the date
+in the Input video's name don't match the scorecard, the app warns you as soon as
+the innings are copied, and asks before **1. Find highlights** or **Trim every
+ball** runs. A file name without teams or a date can't be checked, so it's let
+through.
+
+**Fixing a clip:** change that row's Start or End under **Trims** and click
+**2. Generate videos** again. Only the clips you changed are re-cut, and only the
+reels and highlights that use them are rebuilt; everything else is kept, so it
+takes seconds. The app keeps `trim_record.json` in the output folder to know what
+each video was made from. In a folder made before this existed, the first run
+remakes the stat cards and joined videos once.
+
+**Trim every ball:** click **Trim every ball** to cut every delivery of both pasted
+innings, including the opposition's boundaries and wickets. Clips go into the folders
+`All balls - Batting` and `All balls - Bowling`, numbered in order and named with the
+over and player. Balls where the ball wasn't clear are listed in
+`All balls - check these.txt`. This doesn't use the Trims rows, and a full match
+takes a while, so leave it running.
+
+**How balls are found:** the CricClubs scoreboard on the video changes once after
+every ball, wherever the camera points, so it anchors each ball:
+
+1. The app reads the overs number on the overlay (`OVERS 12.3`) at every keyframe.
+   That says exactly which ball each scoreboard change belongs to, even when the
+   live stream dropped and the saved video skipped minutes, and even when the
+   scorer's clock is off. It needs no stream start time.
+2. Inside the seconds before each change, it looks for the ball travelling down
+   the pitch (a small bright dot on a straight path), or failing that the burst
+   of movement when the ball is bowled.
+3. Wides and no-balls don't move the overs, so they take the scoreboard changes
+   between their neighbouring balls.
+
+Reading the scoreboard takes a few minutes the first time for a full 1080p match
+and is saved, so later steps on the same video are quick. The overs digits need a
+720p or 1080p video; at 360p they're too small to read and the app pairs balls by
+the scorecard's times instead, which works when the stream had no gaps.
+
+A ball the overlay never showed (before the overlay first appears, or one the
+scorer undid and re-entered) is placed from its neighbours and always asked about.
+
+**Videos without a scoreboard:** the app falls back to the ball queue, found from
+the video alone: the bowler's run-up, the ball, then the batter's shot, learnt from
+the match's clearest balls. This only works with a fixed camera. **Ball queue
+(video only)** cuts every delivery it finds, 2 seconds either side, into a
+`Ball queue` folder.
+
+**Checking unsure balls:** when someone blocks the ball, or two balls in the same
+minute could be either way round, the app plays that moment (with ffplay) and asks
+whether it's the ball the scorecard describes, before anything is cut. The preview
+is exactly the clip that will be cut. You can move the cut 1 to 4 seconds earlier
+or later, jump to the previous or next ball, leave the ball out, or stop being
+asked and cut the rest as found.
+
+Tick **Check every cut (also the clear ones)** before **1. Find highlights** or
+**Trim every ball** to see every clip this way, including the ones the app found
+clearly. The popup says which kind each one is.
+
+**Clip length:** boundary clips are 4 seconds, 2 either side of the ball
+travelling down the pitch. Wicket clips are 6 seconds, 3 either side. Change
+`BALL_WINDOW` and `WICKET_BALL_WINDOW` in `match_automation.py` to adjust this.
+
+**No-balls and byes:** the parser hasn't been tested on a match containing them.
+No-balls raise a warning so you can check that player's stat by hand.
+
+---
+
+## 8. Troubleshooting
 
 | Problem | Fix |
 |---|---|
@@ -168,7 +273,7 @@ video at all (only the output folder is used).
 
 ---
 
-## 8. Notes
+## 9. Notes
 
 - If a trim's **Watermark** dropdown isn't `None`, that final exported file is always re-encoded (regardless of the "Frame-accurate" checkbox) since overlaying text on every frame requires decoding the video.
 - Output files are named exactly as typed in the **Output filename** field — make sure to include the extension (e.g. `.mp4`).
